@@ -1,0 +1,28 @@
+The minimal event normalizer
+
+Usage:
+    Event.bind(HTMLElement, type, callback, capture);
+    Event.one(HTMLElement, type, callback, capture);
+    Event.unbind(HTMLElement, type[, callback]);
+    Event.hover(HTMLElement, onMouseOver, onMouseOut);
+
+Normalizes:
+    event.target,
+    event.currentTarget
+    event.preventDefault
+    event.relatedTarget
+    event.stopPropagation
+    event.keyCode
+    event.pageX
+    event.pageY
+
+Also normalizes capturing for IE
+
+Tested in IE7+, FF, Chrome
+Linted.
+
+minified size = 2k
+gZipped minified size = 1k
+
+Copyright (c) 2011, Aino
+Licensed under the MIT license.
