@@ -1,14 +1,11 @@
 Test.add({
-    name: 'Capture event',
-    setup: function() {
-
-    },
+    name: 'Capture & bubble event',
     test: function() {
 
         var btn = document.createElement('input');
         btn.type = 'button';
         btn.value = 'Click to pass test';
-        var span = document.createElement(span);
+        var span = document.createElement('span');
         span.appendChild(btn);
         var div = document.createElement('div');
         div.appendChild(span);
@@ -17,8 +14,8 @@ Test.add({
 
         var pass = false;
 
-        Event.bind(btn, 'click', function() {
-            assert( 'the BTN click event was captured and executed third', pass);
+        Event.bind(btn, 'click', function(e) {
+            assert( 'the BTN click event was executed third', pass);
         });
 
         Event.bind(div, 'click', function(e) {
@@ -31,7 +28,7 @@ Test.add({
         }, true);
 
         Event.bind(document, 'click', function() {
-            assert( 'the DOCUMENT click event was captured and executed last', pass);
+            assert( 'the DOCUMENT click event was bubbled and executed last', pass);
             end();
         });
 

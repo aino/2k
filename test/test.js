@@ -24,7 +24,7 @@
 
     var cycle = function() {
 
-        if ( i == len ) {
+        if ( i >= len ) {
             return;
         }
         var test = tests[i];

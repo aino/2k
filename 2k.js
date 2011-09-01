@@ -1,5 +1,5 @@
 /**
- * @preserve 2k v 1.0 2011-09-01
+ * 2k v 1.0 2011-09-01
  * http://aino.com
  *
  * Copyright (c) 2011, Aino
@@ -57,26 +57,32 @@ Event = (function( window ) {
             return false;
         },
 
+        oFix = function( obj, prop, replace ) {
+            if ( !( prop in obj ) || typeof obj[prop] == 'undefined' ) {
+                obj[ prop ] = replace;
+            }
+        },
+
         normalize = function( e ) {
 
             // normalize preventDefault
-            e.preventDefault = e.preventDefault || function() {
+            oFix(e, 'preventDefault', function() {
                 e.returnValue = false;
-            };
+            });
 
             // normalize stopPropagation
-            e.stopPropagation = e.stopPropagation || function() {
+            oFix(e, 'stopPropagation', function() {
                 e.cancelBubble = true;
-            };
+            });
 
             // e.target is (almost) always e.srcElement
-            e.target = e.target || e.srcElement || window;
+            oFix(e, 'target', ( e.srcElement || window ));
 
             // we can refer currentTarget as this, since we use a special callback for IE
-            e.currentTarget = e.currentTarget || this;
+            oFix(e, 'currentTarget', this);
 
             // normalize relatedTarget
-            e.relatedTarget = e.relatedTarget || (function() {
+            oFix(e, 'relatedTarget', (function() {
 
                 if (/^(mouseout|mouseleave)$/.test( e.type )) {
                     return e.toElement;
@@ -84,40 +90,45 @@ Event = (function( window ) {
                     return e.fromElement;
                 }
 
-            }());
+            }()));
 
             // normalize keyCode
-            e.keyCode = e.keyCode || e.which;
+            oFix(e, 'keyCode', e.which);
 
             // normalize pageX and pageY
-            e.pageX = e.pageX || e.clientX + document.body.scrollLeft;
-            e.pageY = e.pageY || e.clientY + document.body.scrollTop;
+            oFix(e, 'pageX', e.clientX + document.body.scrollLeft);
+            oFix(e, 'pageY', e.clientY + document.body.scrollTop);
 
             return e;
 
         },
 
+        nobubble = /^(load|unload|focus|blur)$/,
+
         // the generic event handler
         handler = function( e ) {
 
-            if ( e.isCaptured ) {
-                return;
-            }
-
             e = normalize.call( this, e );
 
+            var elem = e.currentTarget;
+
             // loop through events and call callbacks
-            get( e.currentTarget, e.type, false, function( i, evt ) {
+            get( elem, e.type, false, function( i, evt ) {
 
                 // for IE, we need to create a custom bubble to add capturing functionality
-                // we should only do this if there is a capturing event above the target
+                // TODO: allow stopPropagation in the bubble
                 if ( !('bubbles' in e) ) { // detect IE < 9
                     var capture = [],
+                        bubble = [],
                         target = e.target,
                         ev, obj,
                         filter = function() {
                             get( target, e.type, false, function( i, evt ) {
-                                evt.capture && capture.push( evt );
+                                if( evt.capture ) {
+                                    capture.push( evt );
+                                } else if ( !( nobubble.test( e.type ) ) ) {
+                                    bubble.push( evt );
+                                }
                             });
                         };
 
@@ -133,27 +144,24 @@ Event = (function( window ) {
                         }
                     }
 
-                    // do the manual bubble if captures are found
-                    if ( capture.length ) {
+                    bubble = capture.reverse().concat(bubble);
 
-                        // merge the arrays in the capturing order
-                        capture.reverse();
+                    // do the manual capture/bubble
+                    if ( bubble.length ) {
+                        for ( i=0; bubble[i]; i++ ) {
 
-                        for ( i=0; capture[i]; i++ ) {
-                            obj = capture[i];
+                            obj = bubble[i];
+
                             // manually create a normalized event object and trigger the bubble without propagation
-                            ev = normalize.call( obj.elem, window.event );
+                            ev = normalize.call( obj.elem, document.createEventObject( window.event ) );
                             ev.cancelBubble = true;
-                            ev.isCaptured = true;
+
                             obj.callback.call( obj.elem, ev );
                         }
-                    } else {
-                        evt.callback.call( e.currentTarget, e );
                     }
                 } else {
-
                     // we can let modern browsers take care of bubbling themselves
-                    evt.callback.call( e.currentTarget, e );
+                    evt.callback.call( elem, e );
                 }
             });
         };
@@ -190,8 +198,8 @@ Event = (function( window ) {
             } else if( elem.attachEvent ) {
 
                 // save the scoped callback in bounds for IE, brings currentTarget to the handler
-                bounds.push([ elem, type, function() {
-                    handler.call( elem, window.event );
+                bounds.push([ elem, type, function(e) {
+                    handler.call( elem, e );
                 }]);
 
                 // the MS way
