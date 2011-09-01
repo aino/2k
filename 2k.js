@@ -100,6 +100,10 @@ Event = (function( window ) {
         // the generic event handler
         handler = function( e ) {
 
+            if ( e.isCaptured ) {
+                return;
+            }
+
             e = normalize.call( this, e );
 
             // loop through events and call callbacks
@@ -109,12 +113,11 @@ Event = (function( window ) {
                 // we should only do this if there is a capturing event above the target
                 if ( !('bubbles' in e) ) { // detect IE < 9
                     var capture = [],
-                        normal = [],
                         target = e.target,
                         ev, obj,
                         filter = function() {
                             get( target, e.type, false, function( i, evt ) {
-                                (evt.capture ? capture : normal).push( evt );
+                                evt.capture && capture.push( evt );
                             });
                         };
 
@@ -134,13 +137,14 @@ Event = (function( window ) {
                     if ( capture.length ) {
 
                         // merge the arrays in the capturing order
-                        capture = capture.reverse().concat( normal );
+                        capture.reverse();
 
                         for ( i=0; capture[i]; i++ ) {
                             obj = capture[i];
                             // manually create a normalized event object and trigger the bubble without propagation
                             ev = normalize.call( obj.elem, window.event );
                             ev.cancelBubble = true;
+                            ev.isCaptured = true;
                             obj.callback.call( obj.elem, ev );
                         }
                     } else {
