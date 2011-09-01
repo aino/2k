@@ -68,12 +68,17 @@ Event = (function( window ) {
             // normalize preventDefault
             oFix(e, 'preventDefault', function() {
                 e.returnValue = false;
+                oFix(e, 'defaultPrevented', true);
             });
 
-            // normalize stopPropagation
-            oFix(e, 'stopPropagation', function() {
+            // normalize stopPropagation & cancelBubble
+            var sp = e.stopPropagation;
+            e.stopPropagation = function() {
                 e.cancelBubble = true;
-            });
+                if ( sp ) {
+                    sp.call(this);
+                }
+            };
 
             // e.target is (almost) always e.srcElement
             oFix(e, 'target', ( e.srcElement || window ));
@@ -92,8 +97,10 @@ Event = (function( window ) {
 
             }()));
 
-            // normalize keyCode
-            oFix(e, 'keyCode', e.which);
+            oFix(e, 'bubbles', !(/^(load|unload|focus|blur)$/.test( e.type )) );
+
+            // normalize which
+            e.which = e.which || e.charCode || e.keyCode;
 
             // normalize pageX and pageY
             oFix(e, 'pageX', e.clientX + document.body.scrollLeft);
@@ -103,7 +110,48 @@ Event = (function( window ) {
 
         },
 
-        nobubble = /^(load|unload|focus|blur)$/,
+        bubcap = function( e ) {
+            var capture = [],
+                bubble = [],
+                target = e.target,
+                ev, obj, i,
+                filter = function() {
+                    get( target, e.type, false, function( i, evt ) {
+                        if( evt.capture ) {
+                            capture.push( evt );
+                        } else if ( e.bubbles ) {
+                            bubble.push( evt );
+                        }
+                    });
+                };
+
+            // we need to manually move up the tree and collect events
+            while ( target ) {
+                filter();
+                target = target.parentNode;
+            }
+
+            bubble = capture.reverse().concat(bubble);
+
+            // do the manual capture/bubble
+            if ( bubble.length ) {
+                for ( i=0; bubble[i]; i++ ) {
+
+                    obj = bubble[i];
+
+                    // manually create a normalized event object and trigger the bubble without propagation
+                    ev = 'createEventObject' in document ?
+                        normalize.call( obj.elem, document.createEventObject( window.event ) ) :
+                        e;
+
+                    obj.callback.call( obj.elem, ev );
+
+                    if( ev.cancelBubble ) {
+                        break;
+                    }
+                }
+            }
+        },
 
         // the generic event handler
         handler = function( e ) {
@@ -116,49 +164,8 @@ Event = (function( window ) {
             get( elem, e.type, false, function( i, evt ) {
 
                 // for IE, we need to create a custom bubble to add capturing functionality
-                // TODO: allow stopPropagation in the bubble
-                if ( !('bubbles' in e) ) { // detect IE < 9
-                    var capture = [],
-                        bubble = [],
-                        target = e.target,
-                        ev, obj,
-                        filter = function() {
-                            get( target, e.type, false, function( i, evt ) {
-                                if( evt.capture ) {
-                                    capture.push( evt );
-                                } else if ( !( nobubble.test( e.type ) ) ) {
-                                    bubble.push( evt );
-                                }
-                            });
-                        };
-
-                    // we need to manually move up the tree and collect events
-                    while ( target ) {
-                        filter();
-                        if ( target == document ) {
-                            target = window;
-                            filter();
-                            break;
-                        } else {
-                            target = target.parentNode;
-                        }
-                    }
-
-                    bubble = capture.reverse().concat(bubble);
-
-                    // do the manual capture/bubble
-                    if ( bubble.length ) {
-                        for ( i=0; bubble[i]; i++ ) {
-
-                            obj = bubble[i];
-
-                            // manually create a normalized event object and trigger the bubble without propagation
-                            ev = normalize.call( obj.elem, document.createEventObject( window.event ) );
-                            ev.cancelBubble = true;
-
-                            obj.callback.call( obj.elem, ev );
-                        }
-                    }
+                if ( 'dataFld' in e ) { // detect IE < 9
+                    bubcap( e );
                 } else {
                     // we can let modern browsers take care of bubbling themselves
                     evt.callback.call( elem, e );

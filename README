@@ -12,11 +12,14 @@ Normalizes:
     event.preventDefault
     event.relatedTarget
     event.stopPropagation
-    event.keyCode
+    event.which
     event.pageX
     event.pageY
+    event.bubbles
+    event.defaultPrevented
+    event.cancelBubble
 
-Also normalizes capturing for IE
+Also normalizes event capturing for IE (!)
 
 Tested in IE7+, FF, Chrome
 Linted.
