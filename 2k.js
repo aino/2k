@@ -1,6 +1,6 @@
 /**
  * @preserve 2k v 1.0 2011-09-01
- * http://galleria.aino.se
+ * http://aino.com
  *
  * Copyright (c) 2011, Aino
  * Licensed under the MIT license.
