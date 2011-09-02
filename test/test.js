@@ -40,9 +40,16 @@
         if ('async' in test && test.async === true ) {
             return;
         }
+        destruct();
+    };
+
+    var destruct = function() {
+        if ( tests[i] && 'teardown' in tests[i] ) {
+            tests[i].teardown();
+        }
         i++;
         cycle();
-    };
+    }
 
     window.Test = {
 
@@ -64,8 +71,7 @@
     };
 
     window.end = function() {
-        i++;
-        cycle();
+        destruct();
     }
 
     window.assert = function( msg, test, warn ) {

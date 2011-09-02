@@ -27,15 +27,22 @@ Event = (function( window ) {
         bounds = [],
 
         // method for retrieveing or iterating through matching event objects
-        get = function(elem, type, callback, each) {
+        _get = function(filter, each) {
 
-            var evt, i, ret = [];
+            var evt, i, j, ret = [];
 
-            for ( i=0; events[i]; i++ ) {
+            main: for ( i=0; events[i]; i++ ) {
                 evt = events[i];
-                if ( ( elem && evt.elem !== elem ) ||
-                     ( type && evt.type !== type )  ||
-                     ( callback && evt.callback !== callback ) ) { continue; }
+
+                if ( !( 'elem' in evt ) ) {
+                    continue;
+                }
+
+                for ( j in filter ) {
+                    if ( evt[ j ] !== filter[ j ] ) {
+                        continue main;
+                    }
+                }
                 if ( typeof each == 'function' ) {
                     each( i, evt );
                 }
@@ -45,7 +52,7 @@ Event = (function( window ) {
         },
 
         // method for finding if an element contains another element
-        contains = function( outer, inner ) {
+        _contains = function( outer, inner ) {
             if ( inner && outer && inner !== outer ) {
                 while( inner && inner !== document.body && inner !== outer ) {
                     inner = inner.parentNode;
@@ -57,19 +64,21 @@ Event = (function( window ) {
             return false;
         },
 
-        oFix = function( obj, prop, replace ) {
+        _fix = function( obj, prop, replace ) {
             if ( !( prop in obj ) || typeof obj[prop] == 'undefined' ) {
                 obj[ prop ] = replace;
             }
         },
 
-        normalize = function( e ) {
+        _normalize = function( e ) {
 
             // normalize preventDefault
-            oFix(e, 'preventDefault', function() {
+            _fix(e, 'preventDefault', function() {
                 e.returnValue = false;
-                oFix(e, 'defaultPrevented', true);
+                e.defaultPrevented = true;
             });
+
+            _fix(e, 'defaultPrevented', false);
 
             // normalize stopPropagation & cancelBubble
             var sp = e.stopPropagation;
@@ -81,13 +90,13 @@ Event = (function( window ) {
             };
 
             // e.target is (almost) always e.srcElement
-            oFix(e, 'target', ( e.srcElement || window ));
+            _fix(e, 'target', ( e.srcElement || window ));
 
             // we can refer currentTarget as this, since we use a special callback for IE
-            oFix(e, 'currentTarget', this);
+            _fix(e, 'currentTarget', this);
 
             // normalize relatedTarget
-            oFix(e, 'relatedTarget', (function() {
+            _fix(e, 'relatedTarget', (function() {
 
                 if (/^(mouseout|mouseleave)$/.test( e.type )) {
                     return e.toElement;
@@ -95,28 +104,48 @@ Event = (function( window ) {
                     return e.fromElement;
                 }
 
+                return null;
+
             }()));
 
-            oFix(e, 'bubbles', !(/^(load|unload|focus|blur)$/.test( e.type )) );
+            _fix(e, 'bubbles', !(/^(load|unload|focus|blur)$/.test( e.type )) );
 
             // normalize which
             e.which = e.which || e.charCode || e.keyCode;
 
             // normalize pageX and pageY
-            oFix(e, 'pageX', e.clientX + document.body.scrollLeft);
-            oFix(e, 'pageY', e.clientY + document.body.scrollTop);
+            _fix(e, 'pageX', e.clientX + document.body.scrollLeft);
+            _fix(e, 'pageY', e.clientY + document.body.scrollTop);
 
             return e;
 
         },
 
-        bubcap = function( e ) {
+        _makeObject = function( args ) {
+            var o = {},
+                props = 'elem type callback capture'.split(' '),
+                i;
+            for( i=0; args[i]; i++ ) {
+                o[ props[i] ] = args[i];
+            }
+            return o;
+        },
+
+        // the generic event handler
+        _handler = function( e ) {
+
+            e = _normalize.call( this, e );
+
             var capture = [],
                 bubble = [],
                 target = e.target,
                 ev, obj, i,
+                ceo = document.createEventObject,
                 filter = function() {
-                    get( target, e.type, false, function( i, evt ) {
+                    _get({
+                        elem: target,
+                        type: e.type
+                    }, function( i, evt ) {
                         if( evt.capture ) {
                             capture.push( evt );
                         } else if ( e.bubbles ) {
@@ -125,13 +154,15 @@ Event = (function( window ) {
                     });
                 };
 
+            // loop through events and call callbacks
+            // use our own bubble/capture process for consistency
             // we need to manually move up the tree and collect events
             while ( target ) {
                 filter();
                 target = target.parentNode;
             }
 
-            bubble = capture.reverse().concat(bubble);
+            bubble = capture.reverse().concat( bubble );
 
             // do the manual capture/bubble
             if ( bubble.length ) {
@@ -139,11 +170,13 @@ Event = (function( window ) {
 
                     obj = bubble[i];
 
-                    // manually create a normalized event object and trigger the bubble without propagation
-                    ev = 'createEventObject' in document ?
-                        normalize.call( obj.elem, document.createEventObject( window.event ) ) :
-                        e;
-
+                    // manually create a normalized event object and trigger the bubble
+                    if( ceo ) {
+                        ev = _normalize.call( obj.elem, ceo( window.event ) );
+                    } else {
+                        e.currentTarget = obj.elem;
+                        ev = e;
+                    }
                     obj.callback.call( obj.elem, ev );
 
                     if( ev.cancelBubble ) {
@@ -153,46 +186,49 @@ Event = (function( window ) {
             }
         },
 
-        // the generic event handler
-        handler = function( e ) {
+        _unbind = function( elem, type ) {
 
-            e = normalize.call( this, e );
+            var b, j;
 
-            var elem = e.currentTarget;
+            if ( elem.removeEventListener ) {
 
-            // loop through events and call callbacks
-            get( elem, e.type, false, function( i, evt ) {
+                elem.removeEventListener( type, _handler );
 
-                // for IE, we need to create a custom bubble to add capturing functionality
-                if ( 'dataFld' in e ) { // detect IE < 9
-                    bubcap( e );
-                } else {
-                    // we can let modern browsers take care of bubbling themselves
-                    evt.callback.call( elem, e );
+            } else if( elem.detachEvent ) {
+
+                // retrieve the scoped callback
+                for( j=0; bounds[j]; j++ ) {
+                    b = bounds[j];
+                    if ( b[0] === elem && b[1] == type ) {
+                        elem.detachEvent('on' + type, b[2] );
+                        bounds.splice( j, 1 );
+                        break;
+                    }
                 }
-            });
+            }
         };
 
     return {
 
         // make the get method public, mostly for testing
-        get: get,
+        get: _get,
 
         // bind an event
-        bind: function( elem, type, callback, capture ) {
+        bind: function() {
 
-            // check if we need to add an event listener
-            var exists = !!get( elem, type, false, false ).length;
+            var args = arguments,
+                obj = _makeObject( args ),
+                elem = args[0],
+                type = args[1],
+                exists = _get({
+                    elem: elem,
+                    type: type
+                }, false).length;
 
             // add the event to the events holder
-            events.push({
-                elem: elem,
-                type: type,
-                callback: callback,
-                capture: !!capture
-            });
+            events.push( obj );
 
-            // no need to bind one type twwice, the handler will take care of multiple events
+            // no need to bind one type twice, the handler will take care of multiple events
             if ( exists ) {
                 return Event;
             }
@@ -200,13 +236,13 @@ Event = (function( window ) {
             if( elem.addEventListener ) {
 
                 // the standards way
-                elem.addEventListener( type, handler, !!capture );
+                elem.addEventListener( type, _handler );
 
             } else if( elem.attachEvent ) {
 
                 // save the scoped callback in bounds for IE, brings currentTarget to the handler
                 bounds.push([ elem, type, function(e) {
-                    handler.call( elem, e );
+                    _handler.call( elem, e );
                 }]);
 
                 // the MS way
@@ -217,36 +253,16 @@ Event = (function( window ) {
         },
 
         // unbind an event, if you leave out the callback, all events for the type will be removed
-        unbind: function( elem, type, callback ) {
+        // you can also leave out the type, then all events for that element will be removed
+        unbind: function() {
 
-            var evt, i, j, b,
-                removed = 0,
-                matched = get( elem, type, callback, function( i, evt ) {
-                    events[i] = {};
-                    removed++;
+            var evt,
+                removed = [],
+                found = _get( _makeObject( arguments ), function(i, evt) {
+                    // removeEventListeners on elements that do not have listeners do not raise errors!
+                    _unbind( evt.elem, evt.type );
+                    events[ i ] = {};
                 });
-
-            if ( !removed ) {
-                return Event;
-            }
-
-            if ( removed == matched.length ) {
-
-                if ( elem.removeEventListener ) {
-                    elem.removeEventListener( type, handler );
-                } else if( elem.detachEvent ) {
-
-                    // retrieve the scoped callback
-                    for( j=0; bounds[j]; j++ ) {
-                        b = bounds[j];
-                        if ( b[0] === elem && b[1] == type ) {
-                            elem.detachEvent('on' + type, b[2] );
-                            bounds.splice( j, 1 );
-                            break;
-                        }
-                    }
-                }
-            }
 
             return Event;
         },
@@ -255,7 +271,7 @@ Event = (function( window ) {
         hover: function( elem, over, out ) {
             var check = function(fn, e) {
                 if( e.relatedTarget !== e.currentTarget &&
-                    !contains( e.target, e.relatedTarget ) ) {
+                    !_contains( e.target, e.relatedTarget ) ) {
                     fn.call( e.currentTarget, e );
                 }
             };
@@ -288,14 +304,16 @@ Event = (function( window ) {
             var evt, i,
                 fn = function(){};
 
-            get( elem, type, false, function( i, evt ) {
-                evt.callback.call(elem, {
-                    preventDefault: fn,
+            _get({
+                elem: elem,
+                type: type
+            }, function( i, evt ) {
+                var e = {
                     target: elem,
-                    currentTarget: elem,
                     type: type,
-                    stopPropagation: fn
-                });
+                    fake: true
+                };
+                _handler.call(elem, e);
             });
             return Event;
         }

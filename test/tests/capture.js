@@ -38,21 +38,13 @@ Test.add({
         Event.bind(document, 'click', function() {
             triggers++;
             assert( 'the DOCUMENT click event was bubbled and executed last', triggers == 5);
-            Event.unbind(document, 'click');
-            Event.unbind(document.body, 'click');
-            Event.unbind(div, 'click');
-            Event.unbind(span, 'click');
-            Event.unbind(btn, 'click');
-            assert('All events unbinded', (function() {
-                Event.get(false,false,false,function(j) {
-                    if (j.elem) {
-                        return false;
-                    }
-                });
-                return true;
-            }()));
+
             end();
         });
 
+    },
+
+    teardown: function() {
+        Event.unbind();
     }
 });
