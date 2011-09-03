@@ -38,7 +38,15 @@ E = (function( window ) {
         cancelable = [9,11,12,13,14,15,21,22,23],
         dontbubble = [5,8,24,26,6,2,1,16,17],
 
-        reg = function( arr ) {
+        ie = ('attachEvent' in document),
+
+        // the events holder
+        events = [],
+
+        // holder for callbacks in IE
+        bounds = [],
+
+        _reg = function( arr ) {
             var t = [],
                 i = 0;
             while( arr[i] ) {
@@ -47,12 +55,6 @@ E = (function( window ) {
             }
             return new RegExp('^(' + t.join('|') + ')$');
         },
-
-        // the events holder
-        events = [],
-
-        // holder for callbacks in IE
-        bounds = [],
 
         // method for retrieveing or iterating through matching event objects
         _get = function(filter, each) {
@@ -98,12 +100,17 @@ E = (function( window ) {
             return obj;
         },
 
+        _page = function( e, xy, sc ) {
+            var c = 'client'+xy;
+            return typeof e[c] == 'number' ? e[c] + document.body['scroll' + sc] : undef;
+        },
+
         _normalize = function( ev ) {
 
             // save some native methods first
             var pd = function() {
-                ev.preventDefault.call(ev);
-            };
+                    ev.preventDefault.call(ev);
+                };
 
             // now we flatclone the event into a normal object
             // to allow overwrite of read-only attributes
@@ -113,9 +120,9 @@ E = (function( window ) {
                 AT_TARGET: 2,
                 BUBBLING_PHASE: 3,
 
-                cancelable: reg( cancelable ).test( ev.type ),
+                cancelable: _reg( cancelable ).test( ev.type ),
 
-                bubbles: !reg( dontbubble ).test( ev.type ),
+                bubbles: !_reg( dontbubble ).test( ev.type ),
 
                 defaultPrevented: false,
 
@@ -129,9 +136,9 @@ E = (function( window ) {
 
                 relatedTarget: (function() {
 
-                        if (reg([15,17]).test( ev.type )) {
+                        if ( _reg([15,17]).test( ev.type ) ) {
                             return e.toElement;
-                        } else if (reg([14,16]).test( ev.type )) {
+                        } else if ( _reg([14,16]).test( ev.type ) ) {
                             return e.fromElement;
                         }
 
@@ -139,8 +146,8 @@ E = (function( window ) {
 
                     }()),
 
-                pageX: typeof ev.clientX == 'number' ? ev.clientX + document.body.scrollLeft : undef,
-                pageY: typeof ev.clientY == 'number' ? ev.clientY + document.body.scrollTop : undef
+                pageX: _page(ev, 'X', 'Left'),
+                pageY: _page(ev, 'Y', 'Top')
             }, ev );
 
             return _extend(e, {
@@ -190,12 +197,12 @@ E = (function( window ) {
                         elem: target,
                         type: e.type
                     }, function( i, evt ) {
-                        if ( target === e.currentTarget ) {
+                        if ( target === elem ) {
                             multi.push( evt );
                         }
                         if( evt.capture ) {
                             capture.push( evt );
-                        } else if ( target === e.currentTarget || e.bubbles ) {
+                        } else if ( target === elem || e.bubbles ) {
                             bubble.push( evt );
                         }
                     });
@@ -249,22 +256,20 @@ E = (function( window ) {
                 return;
             }
 
-            if ( elem.removeEventListener ) {
-
-                elem.removeEventListener( type, _handler );
-
-            } else if( elem.detachEvent ) {
-
-                // retrieve the scoped callback
+            if ( ie ) {
                 for( j=0; bounds[j]; j++ ) {
                     b = bounds[j];
                     if ( b[0] === elem && b[1] == type ) {
-                        elem.detachEvent('on' + type, b[2] );
+                        elem.detachEvent( b[2] );
                         bounds.splice( j, 1 );
                         break;
                     }
                 }
+            } else {
+                elem.removeEventListener( type, _handler );
             }
+
+            return E;
         },
 
 
@@ -282,6 +287,7 @@ E = (function( window ) {
                     obj = _makeObject( args ),
                     elem = args[0],
                     type = args[1],
+                    handler = ie ? function(e) { _handler.call( elem, e ); } : _handler,
                     exists = _get({
                         elem: elem,
                         type: type
@@ -303,20 +309,12 @@ E = (function( window ) {
                     return E;
                 }
 
-                if( elem.addEventListener ) {
-
-                    // the standards way
-                    elem.addEventListener( type, _handler );
-
-                } else if( elem.attachEvent ) {
-
-                    // save the scoped callback in bounds for IE, brings currentTarget to the handler
-                    bounds.push([ elem, type, function(e) {
-                        _handler.call( elem, e );
-                    }]);
-
-                    // the MS way
-                    elem.attachEvent('on' + type, bounds[bounds.length-1][2] );
+                if ( ie ) {
+                    // save the anonymous handler
+                    bounds.push([ elem, type, handler ]);
+                    elem.attachEvent('on'+ type, handler);
+                } else {
+                    elem.addEventListener( type, handler );
                 }
 
                 return E;
@@ -339,17 +337,17 @@ E = (function( window ) {
 
             // helper method for mouseover without child elements triggering mouseout
             hover: function( elem, over, out ) {
-                var check = function(fn, e) {
-                    if( e.relatedTarget !== e.currentTarget &&
-                        !_contains( e.target, e.relatedTarget ) ) {
-                        fn.call( e.currentTarget, e );
+                var check = function(fn, e, elem) {
+                    if( e.relatedTarget !== elem &&
+                        !_contains( e.target, elem ) ) {
+                        fn.call( elem, e );
                     }
                 };
                 if ( over ) {
-                    E.bind(elem, 'mouseover', function(e) { check( over, e ); });
+                    E.bind(elem, types[14], function(e) { check( over, e, elem ); });
                 }
                 if ( out ) {
-                    E.bind(elem, 'mouseout', function(e) { check( out, e ); });
+                    E.bind(elem, types[15], function(e) { check( out, e, elem ); });
                 }
 
                 return E;

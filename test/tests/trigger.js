@@ -17,7 +17,6 @@ Test.add({
         var triggers = 0;
 
         E.one(btn, 'click', function(e) {
-            console.log(e.cancelable)
             triggers++;
             assert( 'the BTN click event was triggered and executed second', triggers == 2 && e.currentTarget === e.target);
         });

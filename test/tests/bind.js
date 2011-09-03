@@ -22,7 +22,7 @@ Test.add({
             assert( 'e.stopPropagation OK', typeof e.stopPropagation == 'function' );
             assert( 'e.relatedTarget OK', e.relatedTarget === null );
             assert( 'e.which OK', e.which === 1 );
-            assert( 'e.pageX OK', e.pageX > 100 && e.pageX < 200 );
+            assert( 'e.pageX OK', e.pageX > 100 && e.pageX < 250 );
             assert( 'e.pageY OK', e.pageY > 50 && e.pageY < 80 );
             assert( 'e.bubbles OK', e.bubbles === true );
             assert( 'e.defaultPrevented OK', e.defaultPrevented === false );
