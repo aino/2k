@@ -11,7 +11,7 @@ Usage:
     E.bind( HTMLElement, type, callback[, capture] );
     E.one( HTMLElement, type, callback[, capture] );
     E.unbind( [HTMLElement][, type][, callback][, capture] );
-    E.trigger( HTMLElement, type );
+    E.trigger( HTMLElement, type[, props] );
     E.hover( HTMLElement, onMouseOver, onMouseOut );
 
 You can also use shorthand for most events, jQuery style:
@@ -35,6 +35,7 @@ Normalizes:
     event.isTrusted
     event.eventPhase
     event.cancelable
+    event.timeStamp
 
 Also normalizes event capturing for IE (!)
 

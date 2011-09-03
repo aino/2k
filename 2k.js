@@ -26,8 +26,27 @@ E = (function( window ) {
 
     var document = window.document,
 
-        rcancelable = /^(click|keydown|keypress|keyup|mousedown|mousemove|mouseout|mouseover|mouseup|wheel|textinput)$/,
-        rdontbubble = /^(load|unload|error|abort|resize|focus|blur|mouseenter|mouseleave)$/,
+        undef,
+
+        types = ('blur focus focusin focusout load ' +
+                 'resize scroll unload click dblclick ' +
+                 'mousedown mouseup mousemove mouseover mouseout ' +
+                 'mouseenter mouseleave change select submit ' +
+                 'keydown keypress keyup error wheel ' +
+                 'abort').split(' '),
+
+        cancelable = [9,11,12,13,14,15,21,22,23],
+        dontbubble = [5,8,24,26,6,2,1,16,17],
+
+        reg = function( arr ) {
+            var t = [],
+                i = 0;
+            while( arr[i] ) {
+                t.push( types[ arr[ i ]-1 ] );
+                i++;
+            }
+            return new RegExp('^(' + t.join('|') + ')$');
+        },
 
         // the events holder
         events = [],
@@ -71,10 +90,12 @@ E = (function( window ) {
             return false;
         },
 
-        _fix = function( obj, prop, replace ) {
-            if ( !( prop in obj ) || typeof obj[prop] == 'undefined' ) {
-                obj[ prop ] = replace;
+        // a really basic extend method
+        _extend = function( obj, extend ) {
+            for ( var i in extend ) {
+                obj[ i ] = extend[ i ];
             }
+            return obj;
         },
 
         _normalize = function( ev ) {
@@ -86,75 +107,60 @@ E = (function( window ) {
 
             // now we flatclone the event into a normal object
             // to allow overwrite of read-only attributes
-            var e = {};
-            for ( var i in ev ) {
-                e[i] = ev[i];
-            }
-            e.constructor = ev.constructor;
+            var e = _extend({
 
-            // phase constants
-            _fix(e, 'CAPTURING_PHASE', 1);
-            _fix(e, 'AT_TARGET', 2);
-            _fix(e, 'BUBBLING_PHASE', 3);
+                CAPTURING_PHASE: 1,
+                AT_TARGET: 2,
+                BUBBLING_PHASE: 3,
 
-            // normalize cancelable
-            _fix(e, 'cancelable', (rcancelable.test( e.type )) );
+                cancelable: reg( cancelable ).test( ev.type ),
 
-            // normalize bubbles
-            _fix(e, 'bubbles', !(rdontbubble.test( e.type )) );
+                bubbles: !reg( dontbubble ).test( ev.type ),
 
-            // normalize preventDefault
-            e.preventDefault = function() {
-                if ( !e.cancelable ) {
-                    return;
+                defaultPrevented: false,
+
+                isTrusted: true,
+
+                timeStamp: new Date().getTime(),
+
+                target: ( ev.target || ev.srcElement || window ),
+
+                currentTarget: this,
+
+                relatedTarget: (function() {
+
+                        if (reg([15,17]).test( ev.type )) {
+                            return e.toElement;
+                        } else if (reg([14,16]).test( ev.type )) {
+                            return e.fromElement;
+                        }
+
+                        return null;
+
+                    }()),
+
+                pageX: typeof ev.clientX == 'number' ? ev.clientX + document.body.scrollLeft : undef,
+                pageY: typeof ev.clientY == 'number' ? ev.clientY + document.body.scrollTop : undef
+            }, ev );
+
+            return _extend(e, {
+
+                preventDefault: function() {
+                    if ( !e.cancelable ) {
+                        return;
+                    }
+                    e.returnValue = false;
+                    e.defaultPrevented = true;
+                    pd();
+                },
+                stopPropagation: function() {
+                    e.cancelBubble = true;
+                },
+                stopImmediatePropagation: function() {
+                    e.cancelBubble = true;
+                    e._stop = true;
                 }
-                e.returnValue = false;
-                e.defaultPrevented = true;
-                pd();
-            };
-
-            _fix(e, 'defaultPrevented', false);
-
-            // trusted ( Level 3 )
-            _fix( e, 'isTrusted', true );
-
-            // normalize stopPropagation & cancelBubble
-            e.stopPropagation = function() {
-                e.cancelBubble = true;
-            };
-
-            e.stopImmediatePropagation = function() {
-                e.cancelBubble = true;
-                e._stop = true;
-            };
-
-            // e.target is (almost) always e.srcElement
-            _fix(e, 'target', ( e.srcElement || window ));
-
-            // we can refer currentTarget as this, since we use a special callback for IE
-            _fix(e, 'currentTarget', this);
-
-            // normalize relatedTarget
-            _fix(e, 'relatedTarget', (function() {
-
-                if (/^(mouseout|mouseleave)$/.test( e.type )) {
-                    return e.toElement;
-                } else if (/^(mouseover|mouseenter)$/.test( e.type )) {
-                    return e.fromElement;
-                }
-
-                return null;
-
-            }()));
-
-            // normalize which
-            e.which = e.which || e.charCode || e.keyCode;
-
-            // normalize pageX and pageY
-            _fix(e, 'pageX', e.clientX + document.body.scrollLeft);
-            _fix(e, 'pageY', e.clientY + document.body.scrollTop);
-
-            return e;
+            });
 
         },
 
@@ -179,7 +185,6 @@ E = (function( window ) {
                 multi = [],
                 target = e.target,
                 ev, obj, i, phase,
-                ceo = document.createEObject,
                 filter = function() {
                     _get({
                         elem: target,
@@ -190,7 +195,7 @@ E = (function( window ) {
                         }
                         if( evt.capture ) {
                             capture.push( evt );
-                        } else if ( e.bubbles ) {
+                        } else if ( target === e.currentTarget || e.bubbles ) {
                             bubble.push( evt );
                         }
                     });
@@ -218,28 +223,20 @@ E = (function( window ) {
                         ( obj.capture ? 1 : 3 );
 
                     // manually create a normalized event object and trigger the bubble
-                    if( ceo ) {
-                        ev = _normalize.call( obj.elem, ceo( window.event ) );
-                    } else {
-                        e.currentTarget = obj.elem;
-                        ev = e;
-                    }
+                    ev = _extend(e, { currentTarget: obj.elem });
 
                     // force event phase
                     ev.eventPhase = phase;
 
-                    obj.callback.call( obj.elem, ev );
+                    (obj.callback = obj.callback).call( obj.elem, ev );
 
                     // detect propagation
-                    if( ev._stop && !obj.capture ) {
+                    if( ( ev._stop && !obj.capture ) || ( ev.cancelBubble && !multi.length ) ) {
                         break;
-                    } else if ( ev.cancelBubble ) {
-                        if ( multi.length > 1 ) {
-                            multi.shift();
-                        } else {
-                            break;
-                        }
                     }
+
+                    // shift raises no error on empty arrays
+                    multi.shift();
                 }
             }
         },
@@ -268,144 +265,148 @@ E = (function( window ) {
                     }
                 }
             }
-        };
+        },
 
-    return {
 
-        // make the get method public, mostly for testing
-        get: _get,
+        // The main class
 
-        // bind an event
-        bind: function() {
+        E = {
 
-            var args = arguments,
-                obj = _makeObject( args ),
-                elem = args[0],
-                type = args[1],
-                exists = _get({
+            // make the get method public, mostly for testing
+            get: _get,
+
+            // bind an event
+            bind: function() {
+
+                var args = arguments,
+                    obj = _makeObject( args ),
+                    elem = args[0],
+                    type = args[1],
+                    exists = _get({
+                        elem: elem,
+                        type: type
+                    }, false).length;
+
+                // force a boolean cast of capture
+                obj.capture = !!obj.capture;
+
+                // if duplicated event, return
+                if ( _get( obj, false ).length ) {
+                    return E;
+                }
+
+                // add the event to the events holder
+                events.push( obj );
+
+                // no need to bind one type twice, the handler will take care of multiple events
+                if ( exists ) {
+                    return E;
+                }
+
+                if( elem.addEventListener ) {
+
+                    // the standards way
+                    elem.addEventListener( type, _handler );
+
+                } else if( elem.attachEvent ) {
+
+                    // save the scoped callback in bounds for IE, brings currentTarget to the handler
+                    bounds.push([ elem, type, function(e) {
+                        _handler.call( elem, e );
+                    }]);
+
+                    // the MS way
+                    elem.attachEvent('on' + type, bounds[bounds.length-1][2] );
+                }
+
+                return E;
+            },
+
+            // unbind an event, if you leave out the callback, all events for the type will be removed
+            // you can also leave out the type, then all events for that element will be removed
+            unbind: function() {
+
+                var evt,
+                    removed = [],
+                    found = _get( _makeObject( arguments ), function(i, evt) {
+                        // removeEListeners on elements that don't have listeners do not raise errors!
+                        _unbind( evt.elem, evt.type );
+                        events[ i ] = {};
+                    });
+
+                return E;
+            },
+
+            // helper method for mouseover without child elements triggering mouseout
+            hover: function( elem, over, out ) {
+                var check = function(fn, e) {
+                    if( e.relatedTarget !== e.currentTarget &&
+                        !_contains( e.target, e.relatedTarget ) ) {
+                        fn.call( e.currentTarget, e );
+                    }
+                };
+                if ( over ) {
+                    E.bind(elem, 'mouseover', function(e) { check( over, e ); });
+                }
+                if ( out ) {
+                    E.bind(elem, 'mouseout', function(e) { check( out, e ); });
+                }
+
+                return E;
+            },
+
+            // helper method for binding and unbinding an event
+            one: function( elem, type, callback, capture ) {
+
+                var unbind = this.unbind;
+
+                return E.bind( elem, type, function(e) {
+                    unbind( elem, type, arguments.callee );
+                    callback.call( elem, e );
+                }, capture);
+
+            },
+
+            // trigger all events bound to a certian type
+            trigger: function( elem, type, e ) {
+
+                var evt, i,
+                    fn = function(){};
+
+                _get({
                     elem: elem,
                     type: type
-                }, false).length;
-
-            // force a boolean cast of capture
-            obj.capture = !!obj.capture;
-
-            // if duplicated event, return
-            if ( _get( obj, false ).length ) {
-                return E;
-            }
-
-            // add the event to the events holder
-            events.push( obj );
-
-            // no need to bind one type twice, the handler will take care of multiple events
-            if ( exists ) {
-                return E;
-            }
-
-            if( elem.addEventListener ) {
-
-                // the standards way
-                elem.addEventListener( type, _handler );
-
-            } else if( elem.attachEvent ) {
-
-                // save the scoped callback in bounds for IE, brings currentTarget to the handler
-                bounds.push([ elem, type, function(e) {
-                    _handler.call( elem, e );
-                }]);
-
-                // the MS way
-                elem.attachEvent('on' + type, bounds[bounds.length-1][2] );
-            }
-
-            return E;
-        },
-
-        // unbind an event, if you leave out the callback, all events for the type will be removed
-        // you can also leave out the type, then all events for that element will be removed
-        unbind: function() {
-
-            var evt,
-                removed = [],
-                found = _get( _makeObject( arguments ), function(i, evt) {
-                    // removeEListeners on elements that don't have listeners do not raise errors!
-                    _unbind( evt.elem, evt.type );
-                    events[ i ] = {};
+                }, function() {
+                    _handler.call(elem, _extend({
+                        target: elem,
+                        type: type,
+                        isTrusted: false
+                    }, e));
                 });
+                return E;
+            }
+        };
 
-            return E;
-        },
+    // some shortcuts jQuery style
+    (function() {
 
-        // helper method for mouseover without child elements triggering mouseout
-        hover: function( elem, over, out ) {
-            var check = function(fn, e) {
-                if( e.relatedTarget !== e.currentTarget &&
-                    !_contains( e.target, e.relatedTarget ) ) {
-                    fn.call( e.currentTarget, e );
-                }
+        var args, i,
+
+            define = function(type) {
+                return function() {
+                    args = Array.prototype.slice.call( arguments );
+                    args.splice(1, 0, type);
+                    E[ typeof args[2] == 'function' ? 'bind' : 'trigger' ].apply( window, args );
+                };
             };
-            if ( over ) {
-                E.bind(elem, 'mouseover', function(e) { check( over, e ); });
-            }
-            if ( out ) {
-                E.bind(elem, 'mouseout', function(e) { check( out, e ); });
-            }
 
-            return E;
-        },
-
-        // helper method for binding and unbinding an event
-        one: function( elem, type, callback, capture ) {
-
-            var unbind = this.unbind;
-
-            return E.bind( elem, type, function(e) {
-                unbind( elem, type, arguments.callee );
-                callback.call( elem, e );
-            }, capture);
-
-        },
-
-        // trigger all events bound to a certian type
-        trigger: function( elem, type ) {
-
-            var evt, i,
-                fn = function(){};
-
-            _get({
-                elem: elem,
-                type: type
-            }, function() {
-                _handler.call(elem, {
-                    target: elem,
-                    type: type,
-                    isTrusted: false
-                });
-            });
-            return E;
+        for ( i=0; types[ i ]; i++ ) {
+            E[ types[ i ] ] = define( types[ i ] );
         }
-    };
+
+    }());
+
+    // return the singleton class
+    return E;
 
 }( this ));
-
-// some shortcuts jQuery style
-
-(function( window ) {
-    var a = 'blur focus focusin focusout load resize scroll unload click dblclick ' +
-            'mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave ' +
-            'change select submit keydown keypress keyup error', i, args,
-        define = function(type) {
-            return function() {
-                args = Array.prototype.slice.call( arguments );
-                args.splice(1, 0, type);
-                E[ args.length === 2 ? 'trigger' : 'bind' ].apply( window, args );
-            };
-        };
-    a = a.split(' ');
-
-    for ( i=0; a[i]; i++ ) {
-        E[a[i]] = define( a[i] );
-    }
-
-}(this));

@@ -19,7 +19,7 @@ Test.add({
         });
 
         E.bind(btn, 'click', function(e) {
-            assert('This method should not execute', false);
+            assert('This method should not execute (same element)', false);
         });
 
         E.bind(document, 'click', function(e) {
