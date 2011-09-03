@@ -42,7 +42,7 @@ Also normalizes event capturing for IE (!)
 Note that DOMEvents like DOMAttrModified are not normalized, neither is composition events.
 See full reference here: http://www.w3.org/TR/DOM-Level-3-Events/#table-event-summary
 
-Tested in IE7+, FF, Chrome
+Tested in IE7+, FF, Chrome, Safari, Opera
 Linted.
 
 minified size = 3k

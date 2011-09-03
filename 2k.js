@@ -35,9 +35,11 @@ E = (function( window ) {
                  'keydown keypress keyup error wheel ' +
                  'abort').split(' '),
 
+        // collection of types that cancels/bubbles
         cancelable = [9,11,12,13,14,15,21,22,23],
         dontbubble = [5,8,24,26,6,2,1,16,17],
 
+        // cache ie detection
         ie = ('attachEvent' in document),
 
         // the events holder
@@ -46,6 +48,7 @@ E = (function( window ) {
         // holder for callbacks in IE
         bounds = [],
 
+        // match types
         _reg = function( arr ) {
             var t = [],
                 i = 0;
@@ -114,6 +117,7 @@ E = (function( window ) {
 
             // now we flatclone the event into a normal object
             // to allow overwrite of read-only attributes
+            // we pass some normalized props and let the native ones override if they exist
             var e = _extend({
 
                 CAPTURING_PHASE: 1,
@@ -150,6 +154,8 @@ E = (function( window ) {
                 pageY: _page(ev, 'Y', 'Top')
             }, ev );
 
+            // the methods will not be native, except preventDefault that we previously saved
+            // we need full control of the propagations since we do our own bubbling/capturing
             return _extend(e, {
 
                 preventDefault: function() {
@@ -171,6 +177,7 @@ E = (function( window ) {
 
         },
 
+        // shortcut for making an event object out of arguments
         _makeObject = function( args ) {
             var o = {},
                 props = 'elem type callback capture'.split(' '),
@@ -248,31 +255,6 @@ E = (function( window ) {
             }
         },
 
-        _unbind = function( elem, type ) {
-
-            var b, j;
-
-            if ( !elem || !type ) {
-                return;
-            }
-
-            if ( ie ) {
-                for( j=0; bounds[j]; j++ ) {
-                    b = bounds[j];
-                    if ( b[0] === elem && b[1] == type ) {
-                        elem.detachEvent( b[2] );
-                        bounds.splice( j, 1 );
-                        break;
-                    }
-                }
-            } else {
-                elem.removeEventListener( type, _handler );
-            }
-
-            return E;
-        },
-
-
         // The main class
 
         E = {
@@ -320,15 +302,36 @@ E = (function( window ) {
                 return E;
             },
 
-            // unbind an event, if you leave out the callback, all events for the type will be removed
-            // you can also leave out the type, then all events for that element will be removed
+            // unbind event(s). Takes 0-4 arguments.
             unbind: function() {
 
-                var evt,
+                var evt, b, j, elem, type,
                     removed = [],
                     found = _get( _makeObject( arguments ), function(i, evt) {
+
                         // removeEListeners on elements that don't have listeners do not raise errors!
-                        _unbind( evt.elem, evt.type );
+
+                        elem = evt.elem;
+                        type = evt.type;
+
+                        if ( !elem || !type ) {
+                            return;
+                        }
+
+                        if ( ie ) {
+                            for( j=0; bounds[j]; j++ ) {
+                                b = bounds[j];
+                                if ( b[0] === elem && b[1] == type ) {
+                                    elem.detachEvent( 'on'+type, b[2] );
+                                    bounds.splice( j, 1 );
+                                    break;
+                                }
+                            }
+                        } else {
+                            elem.removeEventListener( type, _handler );
+                        }
+
+                        // remove the event
                         events[ i ] = {};
                     });
 
