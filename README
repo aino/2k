@@ -1,10 +1,23 @@
 The minimal event normalizer
 
+* Very lightweight (~1k gzipped)
+* No dependencies
+* Allows capturing events (jQuery only allows bubbling)
+* W3C DOM Level 3 compliant: http://www.w3.org/TR/DOM-Level-3-Events/
+* Helper for mouseover/mouseout without triggering children
+* Simple syntax
+
 Usage:
-    Event.bind(HTMLElement, type, callback, capture);
-    Event.one(HTMLElement, type, callback, capture);
-    Event.unbind(HTMLElement, type[, callback]);
-    Event.hover(HTMLElement, onMouseOver, onMouseOut);
+    E.bind( HTMLElement, type, callback[, capture] );
+    E.one( HTMLElement, type, callback[, capture] );
+    E.unbind( [HTMLElement][, type][, callback][, capture] );
+    E.trigger( HTMLElement, type );
+    E.hover( HTMLElement, onMouseOver, onMouseOut );
+
+You can also use shorthand for most events, jQuery style:
+    E.click( HTMLElement, callback );
+    E.resize( window, callback );
+    E.click( HTMLElement ); // triggers a click event on HTMLElement
 
 Normalizes:
     event.target,
@@ -12,20 +25,27 @@ Normalizes:
     event.preventDefault
     event.relatedTarget
     event.stopPropagation
+    event.stopImmediatePropagation
     event.which
     event.pageX
     event.pageY
     event.bubbles
     event.defaultPrevented
     event.cancelBubble
+    event.isTrusted
+    event.eventPhase
+    event.cancelable
 
 Also normalizes event capturing for IE (!)
+
+Note that DOMEvents like DOMAttrModified are not normalized, neither is composition events.
+See full reference here: http://www.w3.org/TR/DOM-Level-3-Events/#table-event-summary
 
 Tested in IE7+, FF, Chrome
 Linted.
 
-minified size = 2k
-gZipped minified size = 1k
+minified size = 3k
+gZipped minified size = 1k (!!)
 
 Copyright (c) 2011, Aino
 Licensed under the MIT license.

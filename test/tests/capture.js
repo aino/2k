@@ -15,36 +15,35 @@ Test.add({
 
         var triggers = 0;
 
-        Event.bind(btn, 'click', function(e) {
+        E.bind(btn, 'click', function(e) {
             triggers++;
-            assert( 'the BTN click event was executed third', triggers == 3);
+            assert( 'the BTN click event was executed third', triggers == 3 && e.eventPhase == 2);
         });
 
-        Event.bind(div, 'click', function(e) {
+        E.bind(div, 'click', function(e) {
             triggers++;
-            assert( 'the DIV click event was captured and executed first', triggers == 1);
+            assert( 'the DIV click event was captured and executed first', triggers == 1 && e.eventPhase == 1);
         }, true);
 
-        Event.bind(span, 'click', function(e) {
+        E.bind(span, 'click', function(e) {
             triggers++;
-            assert( 'the SPAN click event was captured and executed second', triggers == 2);
+            assert( 'the SPAN click event was captured and executed second', triggers == 2 && e.eventPhase == 1);
         }, true);
 
-        Event.bind(document.body, 'click', function(e) {
+        E.bind(document.body, 'click', function(e) {
             triggers++;
-            assert( 'the BODY click event was bubbled and executed fourth', triggers == 4);
+            assert( 'the BODY click event was bubbled and executed fourth', triggers == 4 && e.eventPhase == 3);
         });
 
-        Event.bind(document, 'click', function() {
+        E.bind(document, 'click', function(e) {
             triggers++;
-            assert( 'the DOCUMENT click event was bubbled and executed last', triggers == 5);
-
+            assert( 'the DOCUMENT click event was bubbled and executed last', triggers == 5 && e.eventPhase == 3);
             end();
         });
 
     },
 
     teardown: function() {
-        Event.unbind();
+        E.unbind();
     }
 });
