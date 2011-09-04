@@ -3,14 +3,14 @@ Test.add({
     async: true,
     test: function() {
 
-        var btn = document.createElement('input');
-        btn.type = 'button';
-        btn.value = 'Click to pass test';
+        var btn = document.createElement('button');
         btn.style.display = 'none';
+
         var span = document.createElement('span');
-        span.appendChild(btn);
+        span.appendChild( btn );
+
         var div = document.createElement('div');
-        div.appendChild(span);
+        div.appendChild( span );
 
         append(div);
 
@@ -24,7 +24,6 @@ Test.add({
         E.one(div, 'click', function(e) {
             triggers++;
             assert( 'the DIV click event was bubbled and executed last', triggers == 3 && e._extras === true);
-            end();
         });
 
         E.one(span, 'click', function(e) {

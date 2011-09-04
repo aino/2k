@@ -1,11 +1,21 @@
-The minimal event normalizer
+2k.js – A minimal JavaScript event normalizer
 
-* Very lightweight (~1k gzipped)
-* No dependencies
-* Allows capturing events (jQuery only allows bubbling)
+The purpose of 2k.js is to normalize event handling in common
+browsers to support the W3C DOM Level 3 Events Specification.
+
+2k.js creates the global namespace 'E' that acts as a wrapper
+for all event handling. It also provides a simplified syntax
+for binding, triggering, unbinding and other helper methods.
+
+Core features:
+
 * W3C DOM Level 3 compliant: http://www.w3.org/TR/DOM-Level-3-Events/
+* Very lightweight (~1.5k gzipped)
+* No dependencies
+* Allows capturing and bubbling events (jQuery only allows bubbling)
 * Helper for mouseover/mouseout without triggering children
 * Simple syntax
+* Test suite includes IE7+, opera, safari, chrome, firefox
 
 Usage:
     E.bind( HTMLElement, type, callback[, capture] );
@@ -46,7 +56,7 @@ Tested in IE7+, FF, Chrome, Safari, Opera
 Linted.
 
 minified size = 3k
-gZipped minified size = 1k (!!)
+gZipped minified size = 1.5k (!!)
 
 Copyright (c) 2011, Aino
 Licensed under the MIT license.

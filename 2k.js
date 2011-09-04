@@ -35,9 +35,24 @@ E = (function( window ) {
                  'keydown keypress keyup error wheel ' +
                  'abort').split(' '),
 
+        // match types
+        _reg = function( arr ) {
+            var t = [],
+                i = 0,
+                len = arr.length;
+            while( i < len ) {
+                t.push( types[ arr[ i++ ]-1 ] );
+            }
+            return new RegExp('^(' + t.join('|') + ')$');
+        },
+
         // collection of types that cancels/bubbles
-        cancelable = [9,11,12,13,14,15,21,22,23],
-        dontbubble = [5,8,24,26,6,2,1,16,17],
+        cancelable = _reg( [9,11,12,13,14,15,21,22,23] ),
+        dontbubble = _reg( [5,8,24,26,6,2,1,16,17] ),
+
+        // mouseenter / leave
+        mouseenter = _reg( [15,17] ),
+        mouseleave = _reg( [14,16] ),
 
         // cache ie detection
         ie = ('attachEvent' in document),
@@ -47,17 +62,6 @@ E = (function( window ) {
 
         // holder for callbacks in IE
         bounds = [],
-
-        // match types
-        _reg = function( arr ) {
-            var t = [],
-                i = 0;
-            while( arr[i] ) {
-                t.push( types[ arr[ i ]-1 ] );
-                i++;
-            }
-            return new RegExp('^(' + t.join('|') + ')$');
-        },
 
         // method for retrieveing or iterating through matching event objects
         _get = function(filter, each) {
@@ -140,15 +144,15 @@ E = (function( window ) {
 
                 relatedTarget: (function() {
 
-                        if ( _reg([15,17]).test( ev.type ) ) {
-                            return e.toElement;
-                        } else if ( _reg([14,16]).test( ev.type ) ) {
-                            return e.fromElement;
-                        }
+                    if ( mouseenter.test( ev.type ) ) {
+                        return e.toElement;
+                    } else if ( mouseleave.test( ev.type ) ) {
+                        return e.fromElement;
+                    }
 
-                        return null;
+                    return null;
 
-                    }()),
+                }()),
 
                 pageX: _page(ev, 'X', 'Left'),
                 pageY: _page(ev, 'Y', 'Top')
@@ -253,6 +257,10 @@ E = (function( window ) {
                     multi.shift();
                 }
             }
+        },
+
+        _toArray = function(a) {
+            return [].slice.call(a);
         },
 
         // The main class
@@ -392,12 +400,11 @@ E = (function( window ) {
     (function() {
 
         var args, i,
-
             define = function(type) {
                 return function() {
-                    args = Array.prototype.slice.call( arguments );
+                    args = _toArray( arguments );
                     args.splice(1, 0, type);
-                    E[ typeof args[2] == 'function' ? 'bind' : 'trigger' ].apply( window, args );
+                    return E[ typeof args[2] == 'function' ? 'bind' : 'trigger' ].apply( window, args );
                 };
             };
 
