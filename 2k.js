@@ -128,9 +128,9 @@ E = (function( window ) {
                 AT_TARGET: 2,
                 BUBBLING_PHASE: 3,
 
-                cancelable: _reg( cancelable ).test( ev.type ),
+                cancelable: cancelable.test( ev.type ),
 
-                bubbles: !_reg( dontbubble ).test( ev.type ),
+                bubbles: !(dontbubble.test( ev.type )),
 
                 defaultPrevented: false,
 
