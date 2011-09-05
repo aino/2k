@@ -24,6 +24,7 @@ Test.add({
         E.one(div, 'click', function(e) {
             triggers++;
             assert( 'the DIV click event was bubbled and executed last', triggers == 3 && e._extras === true);
+            end();
         });
 
         E.one(span, 'click', function(e) {

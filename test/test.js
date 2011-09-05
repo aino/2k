@@ -4,17 +4,14 @@
 
     document.body.appendChild(div);
 
-    var echo = function( val ) {
-        div.innerHTML+= val;
-    }
-
     var tid,
         i = 0,
         tests = [],
         len = 0,
         no = 1,
         l = 0,
-        loads = 0;
+        loads = 0,
+        results = [];
 
     var loadScript = function() {
         var s = document.createElement('script');
@@ -29,7 +26,36 @@
         }
         var test = tests[i];
 
-        echo('<h2>' + test.name + ' <span>' + loads[i] + '.js</span></h2>');
+        test.h2 = document.createElement('h2');
+        var span = document.createElement('span');
+        test.h2.innerHTML = test.name;
+        span.innerHTML = loads[i] + '.js';
+        test.h2.appendChild( span );
+        div.appendChild(test.h2);
+        results[i] = true;
+
+        test.div = document.createElement('div');
+        test.div.className = 'tests';
+        div.appendChild(test.div);
+
+        var cb = function( inner ) {
+            return function(e) {
+                var cl = inner.className;
+                if ( /open/.test( cl ) ) {
+                    inner.className = 'tests';
+                } else {
+                    inner.className = 'tests open'
+                }
+            }
+        };
+
+        if ( test.h2.attachEvent ) {
+            test.h2.attachEvent('onclick', cb( test.div ) );
+        } else {
+            test.h2.addEventListener('click', cb( test.div ) );
+        }
+
+
         if ( typeof test.setup == 'function') {
             test.setup();
         }
@@ -46,6 +72,9 @@
     var destruct = function() {
         if ( tests[i] && 'teardown' in tests[i] ) {
             tests[i].teardown();
+        }
+        if ( tests[i].h2 ) {
+            tests[i].h2.className = results[i] ? 'pass' : 'fail';
         }
         i++;
         cycle();
@@ -78,18 +107,22 @@
         var p = document.createElement('p');
         p.className = test ? 'ok' : ( warn ? 'warning' : 'fail');
         p.innerHTML = no+'. '+msg;
-        div.appendChild(p);
+        tests[i].div.appendChild(p);
         no ++;
+        if ( !test ) {
+            results[i] = false;
+        }
     }
     window.log = function() {
         var msg = Array.prototype.slice.call(arguments);
-        echo('<p class="log">' + msg.join(' : ') +'</p>');
+
+        var p = document.createElement('p');
+        p.className = 'log'
+        p.innerHTML =  msg.join(' : ');
+        tests[i].div.appendChild(p);
+
     }
     window.append = function(html) {
-        if ( typeof html == 'string' ) {
-            echo(html);
-        } else {
-            div.appendChild(html);
-        }
+        tests[i].div.appendChild(html);
     }
 }());

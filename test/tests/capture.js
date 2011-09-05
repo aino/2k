@@ -5,7 +5,7 @@ Test.add({
 
         var btn = document.createElement('input');
         btn.type = 'button';
-        btn.value = 'Click to pass test';
+        btn.style.display = 'none';
         var span = document.createElement('span');
         span.appendChild(btn);
         var div = document.createElement('div');
