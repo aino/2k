@@ -261,6 +261,32 @@ E = (function( window ) {
             }
         },
 
+        // what to do when someone binds to a certian type if it's not supported
+        _special = (function(){
+
+            var check = function( e, type, handler ) {
+                var elem = e.currentTarget,
+                    related = e.relatedTarget;
+                if( related !== elem && !_contains( elem, related ) ) {
+                    e.type = type;
+                    handler.call( elem, _normalize(e) );
+                }
+            };
+
+            return {
+                mouseenter: function(elem, handler) {
+                    E.bind( elem, types[13], function(e) {
+                        check( e, types[15], handler );
+                    });
+                },
+                mouseleave: function(elem, handler) {
+                    E.bind( elem, types[14], function(e) {
+                        check( e, types[16], handler );
+                    });
+                }
+            };
+        }()),
+
         _toArray = function(a) {
             return [].slice.call(a);
         },
@@ -295,6 +321,12 @@ E = (function( window ) {
                 }
 
                 type = obj.type = types[0];
+
+                // special events, no bubbling or native handling
+                if ( !( type in document ) && type in _special ) {
+                    _special[ type ]( elem, obj.callback );
+                    return E;
+                }
 
                 exists = _get({
                     elem: elem,
@@ -373,19 +405,10 @@ E = (function( window ) {
 
             // helper method for mouseover without child elements triggering mouseout
             hover: function( elem, over, out ) {
-                var check = function(fn, e, elem) {
-                    if( e.relatedTarget !== elem &&
-                        !_contains( e.target, elem ) ) {
-                        fn.call( elem, e );
-                    }
-                };
-                if ( over ) {
-                    E.bind(elem, types[14], function(e) { check( over, e, elem ); });
-                }
+                E.bind(elem, types[15], over );
                 if ( out ) {
-                    E.bind(elem, types[15], function(e) { check( out, e, elem ); });
+                    E.bind(elem, types[16], out );
                 }
-
                 return E;
             },
 

@@ -38,6 +38,10 @@
         test.div.className = 'tests';
         div.appendChild(test.div);
 
+        if ( test.open ) {
+            test.div.className += ' open';
+        }
+
         var cb = function( inner ) {
             return function(e) {
                 var cl = inner.className;
@@ -76,6 +80,7 @@
         if ( tests[i].h2 ) {
             tests[i].h2.className = results[i] ? 'pass' : 'fail';
         }
+        tests[i].div.className = 'tests';
         i++;
         cycle();
     }

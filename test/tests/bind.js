@@ -15,7 +15,7 @@ Test.add({
 
             triggered++;
 
-            assert('Callback called once since same event was bound twice', triggered == 0);
+            assert('Callback called once since same event was bound twice', triggered == 1);
             assert( 'e.currentTarget OK', e.currentTarget === btn );
             assert( 'e.target OK', e.target === btn );
             assert( 'e.preventDefault OK', typeof e.preventDefault == 'function' );
