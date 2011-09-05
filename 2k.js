@@ -1,5 +1,5 @@
 /**
- * 2k v 1.1 2011-09-03
+ * 2k v 1.2 2011-09-05
  * http://aino.com
  *
  * Copyright (c) 2011, Aino
