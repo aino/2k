@@ -269,19 +269,20 @@ E = (function( window ) {
                     related = e.relatedTarget;
                 if( related !== elem && !_contains( elem, related ) ) {
                     e.type = type;
+                    // no bubbling here!
                     handler.call( elem, _normalize(e) );
                 }
             };
 
             return {
-                mouseenter: function(elem, handler) {
-                    E.bind( elem, types[13], function(e) {
-                        check( e, types[15], handler );
+                mouseenter: function( obj ) {
+                    E.bind( obj.elem, types[13], function(e) {
+                        check( e, types[15], obj.callback );
                     });
                 },
-                mouseleave: function(elem, handler) {
-                    E.bind( elem, types[14], function(e) {
-                        check( e, types[16], handler );
+                mouseleave: function( obj ) {
+                    E.bind( obj.elem, types[14], function(e) {
+                        check( e, types[16], obj.callback );
                     });
                 }
             };
@@ -322,17 +323,6 @@ E = (function( window ) {
 
                 type = obj.type = types[0];
 
-                // special events, no bubbling or native handling
-                if ( !( type in document ) && type in _special ) {
-                    _special[ type ]( elem, obj.callback );
-                    return E;
-                }
-
-                exists = _get({
-                    elem: elem,
-                    type: type
-                }, false).length;
-
                 // force a boolean cast of capture
                 obj.capture = !!obj.capture;
 
@@ -340,6 +330,17 @@ E = (function( window ) {
                 if ( _get( obj, false ).length ) {
                     return E;
                 }
+
+                // special events, no bubbling or native handling
+                if ( !( type in document ) && type in _special ) {
+                    _special[ type ]( obj );
+                    return E;
+                }
+
+                exists = _get({
+                    elem: elem,
+                    type: type
+                }, false).length;
 
                 // add the event to the events holder
                 events.push( obj );
