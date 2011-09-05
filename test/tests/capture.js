@@ -1,10 +1,11 @@
 Test.add({
     name: 'Capture & bubble event',
+    async: true,
     test: function() {
 
         var btn = document.createElement('input');
         btn.type = 'button';
-        btn.value = 'Click to pass test';
+        btn.style.display = 'none';
         var span = document.createElement('span');
         span.appendChild(btn);
         var div = document.createElement('div');
@@ -12,26 +13,39 @@ Test.add({
 
         append(div);
 
-        var pass = false;
+        var triggers = 0;
 
-        Event.bind(btn, 'click', function(e) {
-            e.preventDefault();
-            assert( 'the BTN click event was executed third', pass);
+        E.bind(btn, 'click', function(e) {
+            triggers++;
+            assert( 'the BTN click event was executed third', triggers == 3 && e.eventPhase == 2);
         });
 
-        Event.bind(div, 'click', function(e) {
-            assert( 'the DIV click event was captured and executed first', !pass);
-            pass = true;
+        E.bind(div, 'click', function(e) {
+            triggers++;
+            assert( 'the DIV click event was captured and executed first', triggers == 1 && e.eventPhase == 1);
         }, true);
 
-        Event.bind(span, 'click', function(e) {
-            assert( 'the SPAN click event was captured and executed second', pass);
+        E.bind(span, 'click', function(e) {
+            triggers++;
+            assert( 'the SPAN click event was captured and executed second', triggers == 2 && e.eventPhase == 1);
         }, true);
 
-        Event.bind(document, 'click', function() {
-            assert( 'the DOCUMENT click event was bubbled and executed last', pass);
+        E.bind(document.body, 'click', function(e) {
+            triggers++;
+            assert( 'the BODY click event was bubbled and executed fourth', triggers == 4 && e.eventPhase == 3);
+        });
+
+        E.bind(document, 'click', function(e) {
+            triggers++;
+            assert( 'the DOCUMENT click event was bubbled and executed last', triggers == 5 && e.eventPhase == 3);
             end();
         });
 
+        E.click(btn);
+
+    },
+
+    teardown: function() {
+        E.unbind();
     }
 });

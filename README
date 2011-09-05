@@ -1,10 +1,38 @@
-The minimal event normalizer
+2k.js – A minimal JavaScript event normalizer
+
+The purpose of 2k.js is to normalize event handling in common
+browsers to support the W3C DOM Level 3 Events Specification.
+
+2k.js creates the global namespace 'E' that acts as a wrapper
+for all event handling. It also provides a simplified syntax
+for binding, triggering, unbinding and other helper methods.
+
+Core features:
+
+* W3C DOM Level 3 compliant: http://www.w3.org/TR/DOM-Level-3-Events/
+* Very lightweight (~1.5k gzipped)
+* No dependencies
+* Allows capturing and bubbling events (jQuery only allows bubbling)
+* Helper for mouseover/mouseout without triggering children
+* Simple syntax
+* Test suite includes IE7+, opera, safari, chrome, firefox
 
 Usage:
-    Event.bind(HTMLElement, type, callback, capture);
-    Event.one(HTMLElement, type, callback, capture);
-    Event.unbind(HTMLElement, type[, callback]);
-    Event.hover(HTMLElement, onMouseOver, onMouseOut);
+    E.bind( HTMLElement, type, callback[, capture] );
+    E.one( HTMLElement, type, callback[, capture] );
+    E.unbind( [HTMLElement][, type][, callback][, capture] );
+    E.trigger( HTMLElement, type[, props] );
+    E.hover( HTMLElement, onMouseOver, onMouseOut );
+
+You can also use shorthand for most events, jQuery style:
+    E.click( HTMLElement, callback );
+    E.resize( window, callback );
+    E.click( HTMLElement ); // triggers a click event on HTMLElement
+
+You can bind and unbind multiple event types by separating them with a space:
+    E.bind(document, 'mousedown mouseup', function(e) {
+        console.log(e.type);
+    });
 
 Normalizes:
     event.target,
@@ -12,17 +40,28 @@ Normalizes:
     event.preventDefault
     event.relatedTarget
     event.stopPropagation
-    event.keyCode
+    event.stopImmediatePropagation
+    event.which
     event.pageX
     event.pageY
+    event.bubbles
+    event.defaultPrevented
+    event.cancelBubble
+    event.isTrusted
+    event.eventPhase
+    event.cancelable
+    event.timeStamp
 
-Also normalizes capturing for IE
+Also normalizes event capturing for IE (!)
 
-Tested in IE7+, FF, Chrome
+Note that DOMEvents like DOMAttrModified are not normalized, neither is composition events.
+See full reference here: http://www.w3.org/TR/DOM-Level-3-Events/#table-event-summary
+
+Tested in IE7+, FF, Chrome, Safari, Opera
 Linted.
 
-minified size = 2k
-gZipped minified size = 1k
+minified size = 3k
+gZipped minified size = 1.5k (!!)
 
 Copyright (c) 2011, Aino
 Licensed under the MIT license.
