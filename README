@@ -29,6 +29,11 @@ You can also use shorthand for most events, jQuery style:
     E.resize( window, callback );
     E.click( HTMLElement ); // triggers a click event on HTMLElement
 
+You can bind and unbind multiple event types by separating them with a space:
+    E.bind(document, 'mousedown mouseup', function(e) {
+        console.log(e.type);
+    });
+
 Normalizes:
     event.target,
     event.currentTarget

@@ -145,14 +145,16 @@ E = (function( window ) {
                 relatedTarget: (function() {
 
                     if ( mouseenter.test( ev.type ) ) {
-                        return e.toElement;
+                        return ev.toElement;
                     } else if ( mouseleave.test( ev.type ) ) {
-                        return e.fromElement;
+                        return ev.fromElement;
                     }
 
                     return null;
 
                 }()),
+
+                cancelBubble: false,
 
                 pageX: _page(ev, 'X', 'Left'),
                 pageY: _page(ev, 'Y', 'Top')
@@ -241,10 +243,10 @@ E = (function( window ) {
                         ( obj.capture ? 1 : 3 );
 
                     // manually create a normalized event object and trigger the bubble
-                    ev = _extend(e, { currentTarget: obj.elem });
-
-                    // force event phase
-                    ev.eventPhase = phase;
+                    ev = _extend(e, {
+                        currentTarget: obj.elem,
+                        eventPhase: phase
+                    });
 
                     (obj.callback = obj.callback).call( obj.elem, ev );
 
@@ -263,6 +265,13 @@ E = (function( window ) {
             return [].slice.call(a);
         },
 
+        _loopTypes = function( types, args, fn ) {
+            for ( var i=0; types[ i ]; i++ ) {
+                args[ 1 ] = types[ i ];
+                E[ fn ].apply( window, args );
+            }
+        };
+
         // The main class
 
         E = {
@@ -273,15 +282,24 @@ E = (function( window ) {
             // bind an event
             bind: function() {
 
-                var args = arguments,
+                var type, exists,
+                    args = _toArray(arguments),
                     obj = _makeObject( args ),
                     elem = args[0],
-                    type = args[1],
-                    handler = ie ? function(e) { _handler.call( elem, e ); } : _handler,
-                    exists = _get({
-                        elem: elem,
-                        type: type
-                    }, false).length;
+                    types = args[1].split(' '),
+                    handler = ie ? function(e) { _handler.call( elem, e ); } : _handler;
+
+                if ( types.length > 1 ) {
+                    _loopTypes( types, args, 'bind' );
+                    return E;
+                }
+
+                type = obj.type = types[0];
+
+                exists = _get({
+                    elem: elem,
+                    type: type
+                }, false).length;
 
                 // force a boolean cast of capture
                 obj.capture = !!obj.capture;
@@ -313,9 +331,16 @@ E = (function( window ) {
             // unbind event(s). Takes 0-4 arguments.
             unbind: function() {
 
-                var evt, b, j, elem, type,
-                    removed = [],
-                    found = _get( _makeObject( arguments ), function(i, evt) {
+                var args = _toArray( arguments ),
+                    evt, b, j, elem, type,
+                    types = args[1] ? args[1].split(' ') : [];
+
+                if ( types.length > 1 ) {
+                    _loopTypes( types, args, 'unbind' );
+                    return E;
+                }
+
+                _get( _makeObject( args ), function(i, evt) {
 
                         // removeEListeners on elements that don't have listeners do not raise errors!
 

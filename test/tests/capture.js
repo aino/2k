@@ -41,6 +41,8 @@ Test.add({
             end();
         });
 
+        E.click(btn);
+
     },
 
     teardown: function() {

@@ -75,12 +75,10 @@
     }
 
     window.assert = function( msg, test, warn ) {
-        if (test) {
-            echo('<p class="ok">' + no + '. ' + msg + '</p>');
-        } else {
-            var cl = warn ? 'warning' : 'fail';
-            echo('<p class="'+cl+'">' + no + '. ' + msg + '</p>');
-        }
+        var p = document.createElement('p');
+        p.className = test ? 'ok' : ( warn ? 'warning' : 'fail');
+        p.innerHTML = no+'. '+msg;
+        div.appendChild(p);
         no ++;
     }
     window.log = function() {

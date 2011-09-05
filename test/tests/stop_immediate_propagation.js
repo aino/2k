@@ -5,7 +5,7 @@ Test.add({
 
         var btn = document.createElement('input');
         btn.type = 'button';
-        btn.value = 'Click to pass test';
+        btn.style.display = 'none';
 
         var div = document.createElement('div');
         div.appendChild(btn);
@@ -31,6 +31,8 @@ Test.add({
         E.bind(div, 'click', function(e) {
             assert('This method should not execute', false);
         });
+
+        E.click(btn);
 
     },
 
