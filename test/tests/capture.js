@@ -15,6 +15,7 @@ Test.add({
         var pass = false;
 
         Event.bind(btn, 'click', function(e) {
+            e.preventDefault();
             assert( 'the BTN click event was executed third', pass);
         });
 

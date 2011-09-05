@@ -144,20 +144,36 @@ Event = (function( window ) {
                         }
                     }
 
-                    bubble = capture.reverse().concat(bubble);
+                    if ( capture.length ) {
 
-                    // do the manual capture/bubble
-                    if ( bubble.length ) {
-                        for ( i=0; bubble[i]; i++ ) {
+                        bubble = capture.reverse().concat(bubble);
 
-                            obj = bubble[i];
+                        // do the manual capture/bubble
+                        if ( bubble.length ) {
+                            for ( i=0; bubble[i]; i++ ) {
 
-                            // manually create a normalized event object and trigger the bubble without propagation
-                            ev = normalize.call( obj.elem, document.createEventObject( window.event ) );
-                            ev.cancelBubble = true;
+                                obj = bubble[i];
 
-                            obj.callback.call( obj.elem, ev );
+                                // manually create a normalized event object and trigger the bubble without propagation
+                                ev = normalize.call( obj.elem, document.createEventObject( window.event ) );
+                                if ( obj.elem !== elem ) {
+                                    ev.cancelBubble = true;
+                                }
+
+                                obj.callback.call( obj.elem, ev );
+
+                                console.log(i,obj.elem == elem, ev.cancelBubble);
+
+                                if ( obj.elem == elem && ev.cancelBubble ) {
+                                    console.log('break');
+                                    break;
+                                } else {
+                                    console.log(i)
+                                }
+                            }
                         }
+                    } else {
+                        evt.callback.call( elem, e );
                     }
                 } else {
                     // we can let modern browsers take care of bubbling themselves
