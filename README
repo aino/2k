@@ -13,7 +13,7 @@ Core features:
 * Very lightweight (~1.5k gzipped)
 * No dependencies
 * Allows capturing and bubbling events (jQuery only allows bubbling)
-* Helper for mouseover/mouseout without triggering children
+* Normalizes mousenter and mouseleave for simple hovers
 * Simple syntax
 * Test suite includes IE7+, opera, safari, chrome, firefox
 
@@ -22,12 +22,14 @@ Usage:
     E.one( HTMLElement, type, callback[, capture] );
     E.unbind( [HTMLElement][, type][, callback][, capture] );
     E.trigger( HTMLElement, type[, props] );
-    E.hover( HTMLElement, onMouseOver, onMouseOut );
 
 You can also use shorthand for most events, jQuery style:
     E.click( HTMLElement, callback );
     E.resize( window, callback );
     E.click( HTMLElement ); // triggers a click event on HTMLElement
+
+Another way to use 2k is to use it as a function with the element as argument, then chain methods on top of it:
+    E( HTMLElement ).click( callback ).mousenter( callback );
 
 You can bind and unbind multiple event types by separating them with a space:
     E.bind(document, 'mousedown mouseup', function(e) {

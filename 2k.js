@@ -12,12 +12,14 @@
  * E.one( HTMLElement, type, callback[, capture] );
  * E.unbind( [HTMLElement][, type][, callback][, capture] );
  * E.trigger( HTMLElement, type );
- * E.hover( HTMLElement, onMouseOver, onMouseOut );
  *
  * Shorthands:
  * E.click( HTMLElement, callback ); // same as E.bind( HTMLElement, 'click', callback );
  * E.resize( window, callback );
  * E.click( HTMLElement ); // triggers a click event on HTMLElement
+ *
+ * Element chaining:
+ * E( HTMLElement ).click( callback ).mouseover( callback );
 */
 
 /*global E:true */
@@ -269,11 +271,14 @@ E = (function( window ) {
                 e.bubbles = false;
                 var elem = e.currentTarget,
                     related = e.relatedTarget,
-                    target = e.target;
+                    target = e.target,
+                    inside = false;
 
-                if ( !_contains( elem, target ) && !_contains( elem, related ) ) {
-                    e.type = type;
-                    handler.call( elem, e );
+                e.type = type;
+
+                if( related && ( target === elem || _contains( elem, target ) ) &&
+                    !( _contains(target, related) || _contains(related, target) ) ) {
+                    handler.call(elem, e);
                 }
             };
 
@@ -304,7 +309,7 @@ E = (function( window ) {
 
         // The main class
 
-        E = {
+        var methods = {
 
             // make the get method public, mostly for testing
             get: _get,
@@ -447,17 +452,43 @@ E = (function( window ) {
                 return function() {
                     args = _toArray( arguments );
                     args.splice(1, 0, type);
-                    return E[ typeof args[2] == 'function' ? 'bind' : 'trigger' ].apply( window, args );
+                    return methods[ typeof args[2] == 'function' ? 'bind' : 'trigger' ].apply( window, args );
                 };
             };
 
         for ( i=0; types[ i ]; i++ ) {
-            E[ types[ i ] ] = define( types[ i ] );
+            methods[ types[ i ] ] = define( types[ i ] );
         }
 
     }());
 
-    // return the singleton class
-    return E;
+    // create the element chain to allow E(elem).bind('click', callback) or E(elem).click(callback)
+
+    return (function() {
+
+        var _init = function( elem ) {
+                this.elem = elem;
+            },
+            args, fn,
+            init = function( elem ) {
+                return new _init( elem );
+            },
+            ext = function(fn) {
+                return function() {
+                    methods[ fn ].apply( window, [ this.elem ].concat( _toArray( arguments ) ) );
+                    return this;
+                };
+            },
+            i = 0;
+
+
+        for ( fn in methods ) {
+            init[ fn ] = methods[ fn ];
+            _init.prototype[ fn ] = ext( fn );
+        }
+
+        return init;
+
+    }());
 
 }( this ));
