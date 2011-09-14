@@ -26,26 +26,18 @@ Test.add({
 
         log('Mouse over & out the areas to pass hover');
 
-        E.hover(div, function(e) {
-            assert('Mouseover triggered on the container', e.target.nodeName == 'DIV' && e.type == 'mouseenter');
-            if ( e.target === 'SPAN' ) {
-                assert('Mouseover triggered on the inner element', false);
-            }
-        }, function(e) {
-            assert('Mouseout triggered on the container', e.type == 'mouseleave');
-            if ( e.target === 'SPAN' ) {
-                assert('Mouseout triggered on the inner element', false);
-            }
-        });
-
         E.mouseenter(div, function(e) {
-            e.currentTarget.style.backgroundColor = '#b5d3be';
-            assert('mouseenter trigger', e.type == 'mouseenter');
-        });
-
-        E.mouseleave(div, function(e) {
-            assert('mouseleave trigger', e.type == 'mouseleave');
-            if ( trigger ) {
+            assert('Mouseenter triggered on the container', e.target.nodeName == 'DIV' && e.type == 'mouseenter');
+            if ( e.target.nodeName === 'SPAN' ) {
+                assert('Mouseover triggered on the inner element', false);
+            } else {
+                div.style.backgroundColor = '#b5d3be';
+            }
+        }).mouseleave(div, function(e) {
+            assert('Mouseleave triggered on the container', e.type == 'mouseleave');
+            if ( e.target.nodeName === 'SPAN' ) {
+                assert('Mouseout triggered on the inner element', false);
+            } else if ( trigger ) {
                 end();
             } else {
                 log('Move over both areas!');
@@ -56,7 +48,7 @@ Test.add({
         E.mouseover(span, function(e) {
             e.currentTarget.style.backgroundColor = '#b5d3be';
             trigger++;
-        })
+        });
 
         /*
 

@@ -1,5 +1,5 @@
 /**
- * 2k v 1.2 2011-09-05
+ * 2k v 1.3 2011-09-14
  * http://aino.com
  *
  * Copyright (c) 2011, Aino
@@ -265,12 +265,15 @@ E = (function( window ) {
         _special = (function(){
 
             var check = function( e, type, handler ) {
+                e = _normalize(e);
+                e.bubbles = false;
                 var elem = e.currentTarget,
-                    related = e.relatedTarget;
-                if( related !== elem && !_contains( elem, related ) ) {
+                    related = e.relatedTarget,
+                    target = e.target;
+
+                if ( !_contains( elem, target ) && !_contains( elem, related ) ) {
                     e.type = type;
-                    // no bubbling here!
-                    handler.call( elem, _normalize(e) );
+                    handler.call( elem, e );
                 }
             };
 
@@ -375,7 +378,7 @@ E = (function( window ) {
 
                 _get( _makeObject( args ), function(i, evt) {
 
-                        // removeEListeners on elements that don't have listeners do not raise errors!
+                        // removing listeners on elements that don't have listeners do not raise errors!
 
                         elem = evt.elem;
                         type = evt.type;
@@ -401,15 +404,6 @@ E = (function( window ) {
                         events[ i ] = {};
                     });
 
-                return E;
-            },
-
-            // helper method for mouseover without child elements triggering mouseout
-            hover: function( elem, over, out ) {
-                E.bind(elem, types[15], over );
-                if ( out ) {
-                    E.bind(elem, types[16], out );
-                }
                 return E;
             },
 
