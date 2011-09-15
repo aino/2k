@@ -1,5 +1,5 @@
 /**
- * 2k v 1.3 2011-09-14
+ * 2k v 1.3.2 2011-09-15
  * http://aino.com
  *
  * Copyright (c) 2011, Aino
@@ -90,15 +90,13 @@ E = (function( window ) {
 
         // method for finding if an element contains another element
         _contains = function( outer, inner ) {
-            if ( inner && outer && inner !== outer ) {
-                while( inner && inner !== document.body && inner !== outer ) {
-                    inner = inner.parentNode;
-                }
-                if ( inner === outer ) {
-                    return true;
-                }
+            if ( outer === inner ) {
+                return false;
             }
-            return false;
+            while( inner && inner !== outer ) {
+                inner = inner.parentNode;
+            }
+            return inner === outer;
         },
 
         // a really basic extend method
@@ -270,14 +268,11 @@ E = (function( window ) {
                 e = _normalize(e);
                 e.bubbles = false;
                 var elem = e.currentTarget,
-                    related = e.relatedTarget,
-                    target = e.target,
-                    inside = false;
+                    related = e.relatedTarget;
 
-                e.type = type;
+                e.type = types[type];
 
-                if( related && ( target === elem || _contains( elem, target ) ) &&
-                    !( _contains(target, related) || _contains(related, target) ) ) {
+                if ( elem !== related && !_contains( elem, related ) ) {
                     handler.call(elem, e);
                 }
             };
@@ -285,13 +280,49 @@ E = (function( window ) {
             return {
                 mouseenter: function( obj ) {
                     E.bind( obj.elem, types[13], function(e) {
-                        check( e, types[15], obj.callback );
+                        check( e, 15, obj.callback );
                     });
                 },
                 mouseleave: function( obj ) {
                     E.bind( obj.elem, types[14], function(e) {
-                        check( e, types[16], obj.callback );
+                        check( e, 16, obj.callback );
                     });
+                }
+            };
+        }()),
+
+        // some native triggers
+        _nativeTriggers = (function() {
+
+            var fakeTrigger = function( elem, type ) {
+                    _get({
+                        elem: elem,
+                        type: type
+                    }, function() {
+                        _handler.call(elem, {
+                            target: elem,
+                            type: type,
+                            isTrusted: false
+                        });
+                    });
+                },
+                blurfocus = function( elem, type ) {
+                    var style = elem.style;
+                    if ( style.visibility == 'hidden' || style.display == 'none' ) {
+                        fakeTrigger( elem, type );
+                        return;
+                    }
+                    try {
+                        elem[ type ]();
+                    } catch(e){}
+                };
+
+            return {
+                focus: function( elem ) {
+                    blurfocus( elem, types[1] );
+                },
+                blur: function( elem ) {
+                    blurfocus( elem, types[0]);
                 }
             };
         }()),
@@ -339,12 +370,6 @@ E = (function( window ) {
                     return E;
                 }
 
-                // special events, no bubbling or native handling
-                if ( !( type in document ) && type in _special ) {
-                    _special[ type ]( obj );
-                    return E;
-                }
-
                 exists = _get({
                     elem: elem,
                     type: type
@@ -352,6 +377,12 @@ E = (function( window ) {
 
                 // add the event to the events holder
                 events.push( obj );
+
+                // special events, no bubbling or native handling
+                if ( type in _special ) {
+                    _special[ type ]( obj );
+                    return E;
+                }
 
                 // no need to bind one type twice, the handler will take care of multiple events
                 if ( exists ) {
@@ -430,6 +461,11 @@ E = (function( window ) {
                 var evt, i,
                     fn = function(){};
 
+                if ( type in _nativeTriggers ) {
+                    _nativeTriggers[ type ]( elem );
+                    return;
+                }
+
                 _get({
                     elem: elem,
                     type: type
@@ -463,7 +499,6 @@ E = (function( window ) {
     }());
 
     // create the element chain to allow E(elem).bind('click', callback) or E(elem).click(callback)
-
     return (function() {
 
         var _init = function( elem ) {
@@ -478,8 +513,7 @@ E = (function( window ) {
                     methods[ fn ].apply( window, [ this.elem ].concat( _toArray( arguments ) ) );
                     return this;
                 };
-            },
-            i = 0;
+            };
 
 
         for ( fn in methods ) {
