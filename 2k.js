@@ -116,7 +116,9 @@ E = (function( window ) {
 
             // save some native methods first
             var pd = function() {
-                    ev.preventDefault.call(ev);
+                    try {
+                        ev.preventDefault.call(ev);
+                    } catch(e) {}
                 };
 
             // now we flatclone the event into a normal object
