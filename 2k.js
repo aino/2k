@@ -88,6 +88,20 @@ E = (function( window ) {
             return ret;
         },
 
+        // garbage collector
+        collector = window.setInterval(function() {
+
+            var evts = _get(),
+                i = 0;
+
+            for (; evts[i]; i++) {
+                if ( events[i] && !('elem' in events[i]) ) {
+                    events.splice( i, 1 );
+                }
+            }
+
+        }, 1000),
+
         // method for finding if an element contains another element
         _contains = function( outer, inner ) {
             if ( outer === inner ) {
@@ -188,7 +202,7 @@ E = (function( window ) {
         // shortcut for making an event object out of arguments
         _makeObject = function( args ) {
             var o = {},
-                props = 'elem type callback capture'.split(' '),
+                props = 'elem type callback capture scope'.split(' '),
                 i;
             for( i=0; i < args.length; i++ ) {
                 o[ props[i] ] = args[i];
@@ -250,7 +264,7 @@ E = (function( window ) {
                         eventPhase: phase
                     });
 
-                    (obj.callback = obj.callback).call( obj.elem, ev );
+                    (obj.callback = obj.callback).call( obj.scope, ev );
 
                     // detect propagation
                     if( ( ev._stop && !obj.capture ) || ( ev.cancelBubble && !multi.length ) ) {
@@ -266,7 +280,7 @@ E = (function( window ) {
         // what to do when someone binds to a certian type if it's not supported
         _special = (function(){
 
-            var check = function( e, type, handler ) {
+            var check = function( e, type, handler, scope ) {
                 e = _normalize(e);
                 e.bubbles = false;
                 var elem = e.currentTarget,
@@ -275,19 +289,19 @@ E = (function( window ) {
                 e.type = types[type];
 
                 if ( elem !== related && !_contains( elem, related ) ) {
-                    handler.call(elem, e);
+                    handler.call(scope, e);
                 }
             };
 
             return {
                 mouseenter: function( obj ) {
                     E.bind( obj.elem, types[13], function(e) {
-                        check( e, 15, obj.callback );
+                        check( e, 15, obj.callback, obj.scope );
                     });
                 },
                 mouseleave: function( obj ) {
                     E.bind( obj.elem, types[14], function(e) {
-                        check( e, 16, obj.callback );
+                        check( e, 16, obj.callback, obj.scope );
                     });
                 }
             };
@@ -355,7 +369,8 @@ E = (function( window ) {
                     obj = _makeObject( args ),
                     elem = args[0],
                     types = args[1].split(' '),
-                    handler = ie ? function(e) { _handler.call( elem, e ); } : _handler;
+                    scope = typeof obj.scope != 'undefined' ? obj.scope : obj.elem,
+                    handler = ie ? function(e) { _handler.call( scope, e ); } : _handler;
 
                 if ( types.length > 1 ) {
                     _loopTypes( types, args, 'bind' );
@@ -363,6 +378,10 @@ E = (function( window ) {
                 }
 
                 type = obj.type = types[0];
+
+                // force a scope, if not defined use the element
+
+                obj.scope = scope;
 
                 // force a boolean cast of capture
                 obj.capture = !!obj.capture;
@@ -446,19 +465,21 @@ E = (function( window ) {
             },
 
             // helper method for binding and unbinding an event
-            one: function( elem, type, callback, capture ) {
+            one: function( elem, type, callback, capture, scope ) {
 
                 var unbind = this.unbind;
 
+                scope = typeof scope == 'undefined' ? elem : scope;
+
                 return E.bind( elem, type, function(e) {
                     unbind( elem, type, arguments.callee );
-                    callback.call( elem, e );
+                    callback.call( scope, e );
                 }, capture);
 
             },
 
             // trigger all events bound to a certian type
-            trigger: function( elem, type, e ) {
+            trigger: function( elem, type, e, scope ) {
 
                 var evt, i,
                     fn = function(){};
