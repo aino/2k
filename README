@@ -14,6 +14,7 @@ Core features:
 * No dependencies
 * Allows capturing and bubbling events (jQuery only allows bubbling)
 * Normalizes mousenter and mouseleave for simple hovers
+* Allows simple event delegation
 * Simple syntax
 * Test suite includes IE7+, opera, safari, chrome, firefox
 
@@ -21,6 +22,7 @@ Usage:
     E.bind( HTMLElement, type, callback[, capture] );
     E.one( HTMLElement, type, callback[, capture] );
     E.unbind( [HTMLElement][, type][, callback][, capture] );
+    E.delegate( [HTMLElement][, type][, callback] );
     E.trigger( HTMLElement, type[, props] );
 
 You can also use shorthand for most events, jQuery style:

@@ -1,5 +1,5 @@
 /**
- * 2k v 1.3.2 2011-09-15
+ * 2k v 1.3.3 2011-10-07
  * http://aino.com
  *
  * Copyright (c) 2011, Aino
@@ -10,6 +10,7 @@
  * Usage:
  * E.bind( HTMLElement, type, callback[, capture] );
  * E.one( HTMLElement, type, callback[, capture] );
+ * E.delegate( HTMLElement, type, callback );
  * E.unbind( [HTMLElement][, type][, callback][, capture] );
  * E.trigger( HTMLElement, type );
  *
@@ -64,6 +65,9 @@ E = (function( window ) {
 
         // holder for callbacks in IE
         bounds = [],
+
+        // delegates holder
+        delegates = {},
 
         // method for retrieveing or iterating through matching event objects
         _get = function(filter, each) {
@@ -421,6 +425,23 @@ E = (function( window ) {
                 return E;
             },
 
+            delegate: function() {
+
+                var args = _toArray( arguments ),
+                    obj = _makeObject( args );
+
+                E.bind(document, obj.type, function(e) {
+                    var target = e.target;
+                    while( target && target !== obj.elem ) {
+                        target = target.parentNode;
+                    }
+                    if ( target === obj.elem ) {
+                        e.currentTarget = target;
+                        obj.callback.call( target, e );
+                    }
+                });
+            },
+
             // unbind event(s). Takes 0-4 arguments.
             unbind: function() {
 
@@ -465,16 +486,17 @@ E = (function( window ) {
             },
 
             // helper method for binding and unbinding an event
-            one: function( elem, type, callback, capture, scope ) {
+            one: function() {
 
-                var unbind = this.unbind;
+                var args = _toArray( arguments ),
+                    cb = args[2];
 
-                scope = typeof scope == 'undefined' ? elem : scope;
+                args[2] = function(e) {
+                    E.unbind( e.currentTarget, e.type, arguments.callee );
+                    cb(e);
+                };
 
-                return E.bind( elem, type, function(e) {
-                    unbind( elem, type, arguments.callee );
-                    callback.call( scope, e );
-                }, capture);
+                return E.bind.apply( E, args );
 
             },
 
@@ -489,16 +511,12 @@ E = (function( window ) {
                     return;
                 }
 
-                _get({
-                    elem: elem,
-                    type: type
-                }, function() {
-                    _handler.call(elem, _extend({
-                        target: elem,
-                        type: type,
-                        isTrusted: false
-                    }, e));
-                });
+                _handler.call(elem, _extend({
+                    target: elem,
+                    type: type,
+                    isTrusted: false
+                }, e));
+
                 return E;
             }
         };
